@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Don't Let Doge Drop!</title>
+  <style>
+    body { margin:0; background:#222; color:#fff; font-family:sans-serif; text-align:center;}
+    #gameCanvas { background:#333; border-radius:20px; display:block; margin:30px auto;}
+    .scoreboard { font-size:1.1em; margin:4px;}
+    #tapMsg { font-size:1.1em; color:#fff9; margin-bottom:10px;}
+    #shareBtn, #uploadBtn { background:#4caf50; color:#fff; border:none; padding:12px 24px; border-radius:15px; font-size:1.1em; margin:12px; cursor:pointer;}
+    #shareBtn:active, #uploadBtn:active { background:#357a38;}
+    #skinPreview { width:48px; height:48px; border:2px solid #fff; border-radius:50%; display:inline-block; vertical-align:middle; margin:8px 0;}
+  </style>
+</head>
+<body>
+  <h1>Don't Let Doge Drop!</h1>
+  <div>
+    <span>Ball: </span>
+    <img id="skinPreview" />
+    <button id="uploadBtn">Upload Custom Meme</button>
+    <input type="file" id="uploadInput" style="display:none;" accept="image/*" />
+  </div>
+  <canvas id="gameCanvas" width="320" height="480"></canvas>
+  <div id="score" class="scoreboard">Score: 0</div>
+  <div id="best" class="scoreboard">Best: 0</div>
+  <div id="daily" class="scoreboard"></div>
+  <div id="weekly" class="scoreboard"></div>
+  <div id="tapMsg">(Tap/Click the ball to keep it up!)</div>
+  <button id="shareBtn" style="display:none;">Share Your Score</button>
+  <script>
+    // Default Doge image (base64, always works, no hotlinking)
+    const defaultDoge = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAYAAABw4pVUAAABnUlEQVR4nO3bS27CMBQEUUe3/x9YwB0B6ggvIBnsDPCnJvKOLuHkzQXusvE/uJDwql2mkmSJEkSZIkSRJ0iV7ovmyrk4HuT3ac6Bbl4Z7Jf4CEuWxe6ONtgEbsWH8wV5uwSftcBrYCdZfNw9GJ0Fc+m+BLreTApsQ/8HI7b4Afm6j+dxDd5vgTzBfdY+M5pN9HEW/TbAFe7PR8JPQX6fgOwX7GAA/gcQbQni9M1avdS1AiGItItImiLUP0X2o3FvWn6nrjT4GLku1HnqQdFbeLwvtcv0cfRC3m0G9xdgyJ6NNjZCxtZGvoU8AY2RcfYchOxL9CCbgydK9lBaByO/AxZYWzfsjJGchMoLWgtlVfQzJKJ9/JM3MSbAkyRpJkCRJkiRJkiTp/y1bMoIQJfEReJwAAAABJRU5ErkJggg==";
+    let memeImg = new Image();
+    memeImg.src = defaultDoge;
+    memeImg.onload = ()=>{skinPreview.src = memeImg.src; draw();};
+    let customImg = null;
+
+    const skinPreview = document.getElementById('skinPreview');
+    // Upload custom image
+    const uploadBtn = document.getElementById('uploadBtn');
+    const uploadInput = document.getElementById('uploadInput');
+    uploadBtn.onclick = ()=> uploadInput.click();
+    uploadInput.onchange = e => {
+      let file = e.target.files[0];
+      if (!file) return;
+      let img = new Image();
+      img.onload = ()=>{ memeImg = img; customImg = img; skinPreview.src = img.src; draw(); };
+      img.src = URL.createObjectURL(file);
+    };
+
+    // Game logic
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('score');
+    const bestEl = document.getElementById('best');
+    const tapMsg = document.getElementById('tapMsg');
+    const shareBtn = document.getElementById('shareBtn');
+    const dailyEl = document.getElementById('daily');
+    const weeklyEl = document.getElementById('weekly');
+
+    let ball = {x:160, y:100, r:36, vy:2};
+    let score = 0, best = +localStorage.bestScore || 0;
+    let playing = true, gravity = 0.28, bounce = -6;
+    let started = false, startTime = 0, gameTime = 0;
+
+    // Daily/Weekly bests
+    function getDailyBest() {
+      let today = (new Date()).toISOString().slice(0,10);
+      return +localStorage['daily-'+today] || 0;
+    }
+    function setDailyBest(s) {
+      let today = (new Date()).toISOString().slice(0,10);
+      let cur = +localStorage['daily-'+today] || 0;
+      if (s > cur) localStorage['daily-'+today] = s;
+    }
+    function getWeeklyBest() {
+      let now = new Date();
+      let weekKey = `${now.getFullYear()}-w${getWeek(now)}`;
+      return +localStorage['week-'+weekKey] || 0;
+    }
+    function setWeeklyBest(s) {
+      let now = new Date();
+      let weekKey = `${now.getFullYear()}-w${getWeek(now)}`;
+      let cur = +localStorage['week-'+weekKey] || 0;
+      if (s > cur) localStorage['week-'+weekKey] = s;
+    }
+    function getWeek(d) {
+      d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+      var dayNum = d.getUTCDay() || 7;
+      d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+      var yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+      return Math.ceil((((d - yearStart) / 86400000) + 1)/7)
+    }
+
+    // Funny fail messages
+    const failMsgs = [
+      t => `You dropped the ball in ${t} seconds 😂`,
+      t => t < 3 ? "Ball: 'Bruh'" : "Oops! That’s gotta hurt…",
+      t => "Legend says... it's still falling.",
+      t => t < 5 ? "High score: Not today." : "Try again for a meme ending!",
+      t => "You fumbled the meme!"
+    ];
+
+    function draw() {
+      ctx.clearRect(0,0,320,480);
+      // Shadow
+      ctx.globalAlpha = 0.13;
+      ctx.beginPath();
+      ctx.ellipse(ball.x, 460, ball.r * 1.2, 10, 0, 0, 2 * Math.PI);
+      ctx.fillStyle = "#000";
+      ctx.fill();
+      ctx.globalAlpha = 1.0;
+      // Ball image
+      if (memeImg && memeImg.complete) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ball.r, 0, 2 * Math.PI);
+        ctx.clip();
+        ctx.drawImage(memeImg, ball.x-ball.r, ball.y-ball.r, ball.r*2, ball.r*2);
+        ctx.restore();
+      } else {
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ball.r, 0, 2 * Math.PI);
+        ctx.fillStyle = "#FFD600";
+        ctx.fill();
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = "#FFC400";
+        ctx.stroke();
+      }
+    }
+
+    function update() {
+      if (!playing) return;
+      ball.vy += gravity;
+      ball.y += ball.vy;
+      if (ball.x-ball.r < 0) ball.x = ball.r;
+      if (ball.x+ball.r > 320) ball.x = 320-ball.r;
+      if (ball.y + ball.r >= 480) {
+        playing = false;
+        gameTime = Math.max(1, Math.floor((Date.now()-startTime)/1000));
+        // Funny fail
+        let failMsg = failMsgs[Math.floor(Math.random()*failMsgs.length)](gameTime);
+        tapMsg.textContent = `Game Over! ${failMsg} Tap to retry.`;
+        shareBtn.style.display = 'inline-block';
+        if (score > best) {
+          best = score;
+          localStorage.bestScore = best;
+        }
+        bestEl.textContent = `Best: ${best}`;
+        setDailyBest(score);
+        setWeeklyBest(score);
+        dailyEl.textContent = `Today's Best: ${getDailyBest()}`;
+        weeklyEl.textContent = `Weekly Best: ${getWeeklyBest()}`;
+        draw();
+        return;
+      }
+      draw();
+      requestAnimationFrame(update);
+    }
+
+    function reset() {
+      ball = {x:160, y:100, r:36, vy:2};
+      score = 0;
+      gravity = 0.28;
+      playing = true;
+      started = false;
+      tapMsg.textContent = '(Tap/Click the ball to keep it up!)';
+      shareBtn.style.display = 'none';
+      scoreEl.textContent = 'Score: 0';
+      dailyEl.textContent = `Today's Best: ${getDailyBest()}`;
+      weeklyEl.textContent = `Weekly Best: ${getWeeklyBest()}`;
+      draw();
+      update();
+    }
+
+    function tapBall(e) {
+      if (!playing) { reset(); return; }
+      let rect = canvas.getBoundingClientRect();
+      let px = ((e.touches?e.touches[0].clientX:e.clientX)-rect.left)*(320/rect.width);
+      let py = ((e.touches?e.touches[0].clientY:e.clientY)-rect.top)*(480/rect.height);
+      let dist = Math.hypot(px-ball.x, py-ball.y);
+      if (dist < ball.r+12) {
+        ball.vy = bounce + Math.random()*-2;
+        ball.x += (Math.random()-0.5)*18;
+        gravity += 0.005;
+        score++;
+        scoreEl.textContent = `Score: ${score}`;
+        if (!started) {
+          started = true;
+          startTime = Date.now();
+          tapMsg.textContent = '';
+        }
+      }
+    }
+
+    canvas.addEventListener('touchstart', tapBall);
+    canvas.addEventListener('mousedown', tapBall);
+
+    shareBtn.onclick = () => {
+      let url = window.location.href.split('?')[0];
+      let txt = `I scored ${score} in "Don't Let Doge Drop!" (${gameTime}s). Can you beat me? ${url}`;
+      if (navigator.share) {
+        navigator.share({title:"Don't Let Doge Drop!", text:txt, url});
+      } else {
+        prompt('Copy and share:', txt);
+      }
+    };
+
+    bestEl.textContent = `Best: ${best}`;
+    dailyEl.textContent = `Today's Best: ${getDailyBest()}`;
+    weeklyEl.textContent = `Weekly Best: ${getWeeklyBest()}`;
+    draw();
+    update();
+  </script>
+</body>
+</html>
