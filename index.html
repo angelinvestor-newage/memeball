@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Don't Let Bonk Drop!</title>
+  <title>Don't Let Doge Drop!</title>
   <style>
     body { margin:0; background:#222; color:#fff; font-family:sans-serif; text-align:center;}
     #gameCanvas { background:#333; border-radius:20px; display:block; margin:30px auto;}
@@ -15,7 +15,7 @@
   </style>
 </head>
 <body>
-  <h1>Don't Let Bonk Drop!</h1>
+  <h1>Don't Let Doge Drop!</h1>
   <div>
     <span>Ball: </span>
     <img id="skinPreview" />
@@ -30,9 +30,9 @@
   <div id="tapMsg">(Tap/Click the ball to keep it up!)</div>
   <button id="shareBtn" style="display:none;">Share Your Score</button>
   <script>
-    // Use local bonk.png as default
+    // Use local Doge.png as default
     let memeImg = new Image();
-    memeImg.src = 'bonk.png';
+    memeImg.src = 'Doge.png';
     let memeLoaded = false;
     let customImg = null;
     const skinPreview = document.getElementById('skinPreview');
@@ -211,9 +211,9 @@
 
     shareBtn.onclick = () => {
       let url = window.location.href.split('?')[0];
-      let txt = `I scored ${score} in "Don't Let Bonk Drop!" (${gameTime}s). Can you beat me? ${url}`;
+      let txt = `I scored ${score} in "Don't Let Doge Drop!" (${gameTime}s). Can you beat me? ${url}`;
       if (navigator.share) {
-        navigator.share({title:"Don't Let Bonk Drop!", text:txt, url});
+        navigator.share({title:"Don't Let Doge Drop!", text:txt, url});
       } else {
         prompt('Copy and share:', txt);
       }
@@ -222,7 +222,7 @@
     bestEl.textContent = `Best: ${best}`;
     dailyEl.textContent = `Today's Best: ${getDailyBest()}`;
     weeklyEl.textContent = `Weekly Best: ${getWeeklyBest()}`;
-    // Only start game after bonk.png loaded or errored
+    // Only start game after Doge.png loaded or errored
     if (memeImg.complete) {
       memeLoaded = memeImg.width > 0 && memeImg.height > 0;
       skinPreview.src = memeImg.src;
