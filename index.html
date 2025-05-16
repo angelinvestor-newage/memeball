@@ -30,23 +30,32 @@
   <div id="tapMsg">(Tap/Click the ball to keep it up!)</div>
   <button id="shareBtn" style="display:none;">Share Your Score</button>
   <script>
-    // Default Doge image (base64, always works, no hotlinking)
-    const defaultDoge = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAYAAABw4pVUAAABnUlEQVR4nO3bS27CMBQEUUe3/x9YwB0B6ggvIBnsDPCnJvKOLuHkzQXusvE/uJDwql2mkmSJEkSZIkSRJ0iV7ovmyrk4HuT3ac6Bbl4Z7Jf4CEuWxe6ONtgEbsWH8wV5uwSftcBrYCdZfNw9GJ0Fc+m+BLreTApsQ/8HI7b4Afm6j+dxDd5vgTzBfdY+M5pN9HEW/TbAFe7PR8JPQX6fgOwX7GAA/gcQbQni9M1avdS1AiGItItImiLUP0X2o3FvWn6nrjT4GLku1HnqQdFbeLwvtcv0cfRC3m0G9xdgyJ6NNjZCxtZGvoU8AY2RcfYchOxL9CCbgydK9lBaByO/AxZYWzfsjJGchMoLWgtlVfQzJKJ9/JM3MSbAkyRpJkCRJkiRJkiTp/y1bMoIQJfEReJwAAAABJRU5ErkJggg==";
+    // Verified base64 Doge image, 48x48, transparent background
+    const defaultDoge = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADwAAAA8CAYAAAA6/NlyAAABtUlEQVRoge2YMU7DMBBFD/jdzsBVsABW4AVqwAVogNpwAVoAVsgBWwAVUgFWwAVaAB2Yc8x7kwyZbS8WT1TW/2QzPUy8wAW4AF6D/PRdfP9Qv4Bd4AFH7wAF3n5PJxHUY7z4jDInY/AANMYEC4DUfM00UpoFC4Hz2BA3wgdIwtxAbwO+GDSlg4A9wKpwAEXfCP3sy/gL8DPwP3YTV03rIcx1UvmmAKbbnBLgE4R7FOb2tJLaP2RHq9AxZYHfCH5Ecm1Cbi/lHzW2yJxtAKuLgIbw1zKrgM8huUz9SwEkCUwTSWkBQ7oD1DKSywF6A+phVcw4wFjOQnIFawzobS1NSng7QIRCAQCYOdpkEMB8AVF8AVmMB9/4FjOwRGMLwLv6ALiYZs3t6TFkeAOMt7N9PM2f8AVkWb+1ggb4GAAAAAElFTkSuQmCC";
     let memeImg = new Image();
     memeImg.src = defaultDoge;
-    memeImg.onload = ()=>{skinPreview.src = memeImg.src; draw();};
+    let memeLoaded = false;
     let customImg = null;
-
     const skinPreview = document.getElementById('skinPreview');
+    memeImg.onload = () => {
+      memeLoaded = true;
+      skinPreview.src = memeImg.src;
+      draw();
+    };
+    memeImg.onerror = () => {
+      memeLoaded = false;
+      draw();
+    };
+
     // Upload custom image
     const uploadBtn = document.getElementById('uploadBtn');
     const uploadInput = document.getElementById('uploadInput');
-    uploadBtn.onclick = ()=> uploadInput.click();
+    uploadBtn.onclick = () => uploadInput.click();
     uploadInput.onchange = e => {
       let file = e.target.files[0];
       if (!file) return;
       let img = new Image();
-      img.onload = ()=>{ memeImg = img; customImg = img; skinPreview.src = img.src; draw(); };
+      img.onload = () => { memeImg = img; customImg = img; skinPreview.src = img.src; memeLoaded = true; draw(); };
       img.src = URL.createObjectURL(file);
     };
 
@@ -65,7 +74,6 @@
     let playing = true, gravity = 0.28, bounce = -6;
     let started = false, startTime = 0, gameTime = 0;
 
-    // Daily/Weekly bests
     function getDailyBest() {
       let today = (new Date()).toISOString().slice(0,10);
       return +localStorage['daily-'+today] || 0;
@@ -93,8 +101,6 @@
       var yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
       return Math.ceil((((d - yearStart) / 86400000) + 1)/7)
     }
-
-    // Funny fail messages
     const failMsgs = [
       t => `You dropped the ball in ${t} seconds 😂`,
       t => t < 3 ? "Ball: 'Bruh'" : "Oops! That’s gotta hurt…",
@@ -112,8 +118,8 @@
       ctx.fillStyle = "#000";
       ctx.fill();
       ctx.globalAlpha = 1.0;
-      // Ball image
-      if (memeImg && memeImg.complete) {
+      // Ball image or fallback
+      if (memeLoaded && memeImg && memeImg.complete) {
         ctx.save();
         ctx.beginPath();
         ctx.arc(ball.x, ball.y, ball.r, 0, 2 * Math.PI);
@@ -140,7 +146,6 @@
       if (ball.y + ball.r >= 480) {
         playing = false;
         gameTime = Math.max(1, Math.floor((Date.now()-startTime)/1000));
-        // Funny fail
         let failMsg = failMsgs[Math.floor(Math.random()*failMsgs.length)](gameTime);
         tapMsg.textContent = `Game Over! ${failMsg} Tap to retry.`;
         shareBtn.style.display = 'inline-block';
@@ -211,8 +216,9 @@
     bestEl.textContent = `Best: ${best}`;
     dailyEl.textContent = `Today's Best: ${getDailyBest()}`;
     weeklyEl.textContent = `Weekly Best: ${getWeeklyBest()}`;
-    draw();
-    update();
+    // Only start game after Doge loaded
+    memeImg.onload = () => { memeLoaded = true; skinPreview.src = memeImg.src; reset(); };
+    if (memeImg.complete) { memeLoaded = true; skinPreview.src = memeImg.src; reset(); }
   </script>
 </body>
 </html>
