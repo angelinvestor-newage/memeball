@@ -30,11 +30,9 @@
   <div id="tapMsg">(Tap/Click the ball to keep it up!)</div>
   <button id="shareBtn" style="display:none;">Share Your Score</button>
   <script>
-    // Doge PNG, 48x48, transparent, CC0
-    const defaultDoge =
-      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADwAAAA8CAYAAAA6/NlyAAABqklEQVRoge3XsW2EMBRF4edGh4g6A4l6A4l4Az3JZiOIIUg1B3cgfoSt1MZ+/l/gBKi1rp99r95/RKCVXXm+AwA1AAn8dVnDD4Ak2P9h5dXGDlZ+N5L32PQ8tWmMHt9jz5gN5oQTTyH3ZV6O31sU/Ht17eXtfNjNUP3AEhYA6VXE1kPt9yA8kT2kekDUYlOLhEW9lzWTXx7zMnmwwEDv2Q2v8o2zX5AVXPe7GMY7L+GKn6TG7yHhQDePK12Sr+N+tz4Blr7fr3FCf2NGHLMXZ0ALQnVFSr1nHbPEF60U6laBPhhA4DRSY7TQtprAqF2MWR+5ZmQmj1GRzx3BMzAlRmswzVpDo3Ywth+4JqPUZGSJY0Cw5qMsAxMT7n5+yUZrMM1aQ6N2MYYDHm9xQFWo1abEwwAAAABJRU5ErkJggg==";
+    // Use local doge.png as default
     let memeImg = new Image();
-    memeImg.src = defaultDoge;
+    memeImg.src = 'doge.png';
     let memeLoaded = false;
     let customImg = null;
     const skinPreview = document.getElementById('skinPreview');
@@ -224,9 +222,9 @@
     bestEl.textContent = `Best: ${best}`;
     dailyEl.textContent = `Today's Best: ${getDailyBest()}`;
     weeklyEl.textContent = `Weekly Best: ${getWeeklyBest()}`;
-    // Only start game after Doge loaded
+    // Only start game after doge.png loaded or errored
     if (memeImg.complete) {
-      memeLoaded = true;
+      memeLoaded = memeImg.width > 0 && memeImg.height > 0;
       skinPreview.src = memeImg.src;
       reset();
     }
